@@ -49,7 +49,7 @@ from torch import nn
 from torchvision.io import read_image
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
-from torchvision.transforms import ToTensor, Lambda, Compose 
+import torchvision.transforms as T
 
 # NOTE: img_dir was removed from init and therefore getitem since 
 # the image path is included inside of the .csv annotation file 
@@ -82,23 +82,27 @@ class CustomImageDataset(Dataset):
         if self.target_transform:
             label = self.target_transform(label)
         # Returns the tensor image and corresponding label in a tuple
+        #print(image_path)
         return image, label 
 
-def resize(data):
-    height = 32
-    width = 32 
-    dim = (width, height)
+# Performs preprocessing on the dataset images 
+data_transforms = T.Compose([
+    T.Resize((32,32)),
+    T.Grayscale(1)
+])
 
 # STEP 0: Load The Data
 training_file = "./LISA_DATA/Training/training_annotations.csv"
 validation_file = "./LISA_DATA/Validating/validating_annotations.csv"
 testing_file = "./LISA_DATA/Testing/testing_annotations.csv" 
 
-training_data = CustomImageDataset(training_file)
-validation_data = CustomImageDataset(validation_file)
-testing_data = CustomImageDataset(testing_file)
+training_data = CustomImageDataset(training_file, data_transforms)
+validation_data = CustomImageDataset(validation_file, data_transforms)
+testing_data = CustomImageDataset(testing_file, data_transforms)
 
-print(testing_data.__getitem__(1))
+# Using __getitem__ in a loop of our dataset(annotations.csv length)
+print(training_data.__getitem__(0))
+print("\n")
 
 # Each element in the dataloader iterable 
 # will return a batch of 64 features and labels 
@@ -111,12 +115,23 @@ train_dataloader = DataLoader(training_data, batch_size=batch_size)
 valid_dataloader = DataLoader(validation_data, batch_size=batch_size)
 test_dataloader = DataLoader(testing_data, batch_size=batch_size)
 
-for X, y in test_dataloader:
+for (X, y) in test_dataloader:
     print("Shape of X [N, C, H, W]: ", X.shape)
-    print("Shape of y: ", y.shape, y.dtype)
+    #print("\nShape of y: ", y.shape, y.dtype)
     break
 
-
+# Exploratory visualization of the dataset 
+# Iterate through the DataLoader
+# Display image and label
+# Array of features & labels will be [0..63] due to batch size
+train_features, train_labels = next(iter(train_dataloader))
+print(f"Feature batch shape: {train_features.size()}")
+#print(f"Labels batch shape: {train_labels.size()}")
+img = train_features[0].squeeze()
+label = train_labels[0]
+plt.imshow(img, cmap="gray")
+plt.show()
+print(f"Label: {label}")
 
 '''
 figure = plt.figure(figsize=(8,8))
@@ -141,6 +156,7 @@ with open(testing_file, mode='rb') as f:
     test = pickle.load(f)
 '''
 
+'''
 # Loading using pandas 
 train = pd.read_csv(training_file)
 valid = pd.read_csv(validation_file)
@@ -149,6 +165,7 @@ test = pd.read_csv(testing_file)
 print(train.shape)
 print(valid.shape)
 print(test.shape)
+'''
 
 # Pickled Data: 
 # 'features': 4D array containing raw pixel data of the traffic sign images (num examples, width, height, channels)
@@ -189,18 +206,6 @@ print("Number of testing examples = ", n_test)
 #print("Image data shape = ", image_shape)
 print("Number of classes = ", n_classes)
 
-
-# Exploratory visualization of the dataset 
-# Iterate through the DataLoader
-# Display image and label
-train_features, train_labels = next(iter(train_dataloader))
-print(f"Feature batch shape: {train_features.size()}")
-print(f"Labels batch shape: {train_labels.size()}")
-img = train_features[0].squeeze()
-label = train_labels[0]
-plt.imshow(img, cmap="gray")
-plt.show()
-print(f"Label: {label}")
 
 # Get Device for Training 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
