@@ -37,6 +37,9 @@ p-fc: 0.5 probability of keeping weight in fully connected layer
 '''
 
 # Load pickled data
+from importlib import reload
+#import utils; reload(utils)
+#from utils import *
 import pickle
 import os
 import time
@@ -117,7 +120,9 @@ class CustomImageDataset(Dataset):
         # transform and target_transform specify the feature and label transform actions
         self.img_labels = pd.read_csv(annotations_file) # Reads annotations from csv file into labels
         self.img_dir = img_dir
+        # Specifies the feature transform actions
         self.transform = transform 
+        # Specifies the label transform actions 
         self.target_transform = target_transform
     
     # Returns the number of samples in our dataset
@@ -131,6 +136,7 @@ class CustomImageDataset(Dataset):
         picture_path = picture_path[2]
         picture_path = picture_path.split(';')
         picture_path = picture_path[0]
+        # Obtains the correct image path
         img_path = os.path.join(self.img_dir, picture_path)
         # Takes image's location on disk, converts that to a tensor using read_image
         image = read_image(img_path)
@@ -141,7 +147,6 @@ class CustomImageDataset(Dataset):
             image = self.transform(image)
         if self.target_transform:
             label = self.target_transform(label)
-        #print(img_path)
         # Returns the tensor image and corresponding label in a tuple
         return image, label 
 
@@ -197,7 +202,7 @@ class ModelExecutor:
         self.create_placeholders()
         cnn = self.model_config.model
 
-        # Build the network
+        # Build the network --- THIS IS WHERE EDLENET IS CALLED
         self.logits = cnn(self.x, self.model_config, self.dropout_placeholder_conv, self.dropout_placeholder_fc)
         # Use softmax as the activation as the function for final layer
         self.cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=self.one_hot_y, logits=self.logits)
@@ -482,23 +487,24 @@ def main():
     ])
 
     # STEP 0: Load The Data
-    # annotation files 
+    # Annotation File directories 
     training_file = "./LISA_DATA/Training/training_annotations.csv"
     validation_file = "./LISA_DATA/Validating/validating_annotations.csv"
     testing_file = "./LISA_DATA/Testing/testing_annotations.csv" 
 
-    # image directories 
+    # Traffic Sign Image Directories 
     training_images = "./LISA_DATA/Training/training_images"
     validating_images = "./LISA_DATA/Validating/validating_images"
     testing_images = "./LISA_DATA/Testing/testing_images"
 
+    # Initializing the custom image dataset
     training_data = CustomImageDataset(training_file, training_images, data_transforms)
     validation_data = CustomImageDataset(validation_file, validating_images, data_transforms)
     testing_data = CustomImageDataset(testing_file, testing_images, data_transforms)
 
     # Using __getitem__ in a loop of our dataset(annotations.csv length)
-    print(training_data.__getitem__(0))
-    print("\n")
+    #print(training_data.__getitem__(0))
+    #print("\n")
 
     # Each element in the dataloader iterable 
     # will return a batch of 512 features and labels 
@@ -507,60 +513,20 @@ def main():
     # Loading data using dataloaders
     # Reshuffle the data at every epoch to reduce model overfitting 
     # If using CUDA, num_workers should be set to 1 and pin_memory to True  
-    train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
-    valid_dataloader = DataLoader(validation_data, batch_size=batch_size, shuffle=True)
-    test_dataloader = DataLoader(testing_data, batch_size=batch_size, shuffle=True)
-    
-    '''
-    train_dataloader = DataLoader(training_data)
-    valid_dataloader = DataLoader(validation_data)
-    test_dataloader = DataLoader(training_data)
-    '''
+    train_dataloader = DataLoader(training_data, batch_size, shuffle=True)
+    valid_dataloader = DataLoader(validation_data, batch_size, shuffle=True)
+    test_dataloader = DataLoader(testing_data, batch_size, shuffle=True)
 
-    '''
-    # Loading using pickle (not suggested)
-    with open(training_file, mode='rb') as f:
-        train = pickle.load(f)
-    with open(validation_file, mode='rb') as f:
-        valid = pickle.load(f)
-    with open(testing_file, mode='rb') as f:
-        test = pickle.load(f)
-    '''
-
-    '''
-    # Loading using pandas 
-    train = pd.read_csv(training_file)
-    valid = pd.read_csv(validation_file)
-    test = pd.read_csv(testing_file)
-
-    print(train.shape)
-    print(valid.shape)
-    print(test.shape)
-    '''
-
-    # Pickled Data: 
-    # 'features': 4D array containing raw pixel data of the traffic sign images (num examples, width, height, channels)
-    # 'labels': 1D array containing the label/class id of the traffic sign
-    # 'sizes' is a list containing (width, height)
-    # 'coords' is a list containing tuples representing coordinates of a bounding box around the sign 
-    '''
-    X_train, y_train = train['features'], train['labels']
-    X_valid, y_valid = valid['features'], valid['labels']
-    X_test, y_test = test['features'], test['labels']
-
-    print("Features shape: ", X_train.shape)
-    print("Leatures shape: ", y_train.shape)
-    '''
-
-    '''
     # STEP 1: Dataset Summary & Exploration 
     # Data Summary:
+    
     for (X, y) in test_dataloader:
         print("Shape of X [N, C, H, W]: ", X.shape)
         print("Shape of y: ", y.shape, y.dtype)
         break
 
     # Exploratory visualization of the dataset 
+    '''    
     figure = plt.figure(figsize=(8,8))
     cols, rows = 3, 3
     for i in range(1, cols * rows + 1):
@@ -573,10 +539,10 @@ def main():
     plt.show()
     '''
 
-    '''
     # Iterate through the DataLoader
     # Display image and label
-    # Array of features & labels will be [0..63] due to batch size
+    # Array of features & labels will be [0..BATCH-1] due to batch size
+    '''
     train_features, train_labels = next(iter(train_dataloader))
     print(f"Feature batch shape: {train_features.size()}")
     print(f"Labels batch shape: {train_labels.size()}")
@@ -585,53 +551,33 @@ def main():
     plt.imshow(img, cmap="gray")
     plt.show()
     print(f"Label: {label}")
-
-    valid_features, valid_labels = next(iter(valid_dataloader))
-    test_features, test_labels = next(iter(test_dataloader))
-
-    # Converting tuple to numpy arrays 
-    train_labels = np.array(train_labels)
-    valid_labels = np.array(valid_labels)
-    test_labels = np.array(test_labels)
-
-    # Then Converting numpy arrays to tensors 
-    train_labels = torch.from_numpy(train_labels)
-    valid_labels = torch.from_numpy(valid_labels)
-    test_labels = torch.from_numpy(test_labels)
-    '''
-
-    '''
-    # Number of training examples 
-    n_train = train.shape[0]
-
-    # Number of validation examples 
-    n_validation = valid.shape[0]
-
-    # Number of testing examples
-    n_test = test.shape[0]
-
-    # What's the shape of a traffic sign image 
-    # image_shape = 
-
-    # How many unique classes/labels there are in the dataset 
-    n_classes = 3
-
-    print("Number of training examples = ", n_train)
-    print("Numer of validating = ", n_validation)
-    print("Number of testing examples = ", n_test)
-    #print("Image data shape = ", image_shape)
-    print("Number of classes = ", n_classes)
     '''
 
     # Step 2: Design and Test a Model Architecture 
     # Get Device for Training 
+    '''
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print('Using {} device'.format(device))
-
+    '''
     train_features, train_labels = next(iter(train_dataloader))
     valid_features, valid_labels = next(iter(valid_dataloader))
     test_features, test_labels = next(iter(test_dataloader))
 
+    n_train = train_features.shape[0]
+    n_validation = valid_features.shape[0]
+    n_test = test_features.shape[0]
+    image_shape = train_features.shape[1:]
+    
+    n_classes = len(set(train_labels))
+
+    print("Number of training examples =", n_train)
+    print("Number of validation examples =", n_validation)
+    print("Number of testing examples =", n_test)
+    print("Image data shape =", image_shape)
+    print("Number of classes = ", n_classes)
+
+    # Block of code to check the datatype of features and labels
+    '''
     print("Type of train_features: ")
     print(type(train_features))
     print("Type of train_labels: ")
@@ -646,19 +592,26 @@ def main():
     print(type(test_features))
     print("Type of test_labels: ")
     print(type(test_labels))
-
-    n_classes = len(set(train_labels))
-    print("Number of classes = ", n_classes)
+    '''
 
     X_train_grayscale = np.reshape(train_features, (train_features.shape[0], 32, 32, 1))
     X_valid_grayscale = np.reshape(valid_features, (valid_features.shape[0], 32, 32, 1))
     X_test_grayscale = np.reshape(test_features, (test_features.shape[0], 32, 32, 1))
 
-    mc_3x3 = ModelConfig(EdLeNet, "EdLeNet_3x3_Grayscale_Sample", [32, 32, 1], [3, 32, 3], [120, 84], 3, [1.0, 1.0])
+    mc_3x3 = ModelConfig(EdLeNet, "EdLeNet_3x3_Grayscale_Sample", [32, 32, 1], [3, 32, 3], [120, 84], 3, [0.75, 0.5])
     me_g_sample_3x3 = ModelExecutor(mc_3x3)
 
     # Passing X and Y features over to the model
-    (c_sample_3x3_tr_metrics, c_sample_3x3_val_metrics, c_sample_3x3_duration) = me_g_sample_3x3.train_model(X_train_grayscale, train_labels, X_valid_grayscale, valid_labels, epochs=100)
-    (c_sample_3x3_ts_accuracy, c_sample_3x3_ts_loss, c_sample_3x3_ts_duration) = me_g_sample_3x3.test_model(X_test_grayscale, test_labels)
+    (g_sample_3x3_tr_metrics, g_sample_3x3_val_metrics, g_sample_3x3_duration) = me_g_sample_3x3.train_model(X_train_grayscale, train_labels, X_valid_grayscale, valid_labels, epochs=100)
+    (g_sample_3x3_ts_accuracy, g_sample_3x3_ts_loss, g_sample_3x3_ts_duration) = me_g_sample_3x3.test_model(X_test_grayscale, test_labels)
 
+    # Visualizing the model analytics
+    '''
+    metrics_arr = [g_sample_3x3_tr_metrics, g_sample_3x3_val_metrics]
+    lbs = ["3x3 training", "3x3 validation"]
+    plot_model_results(metrics_arr, [2, 1], lbs, ["Epochs", "Epochs"], ["Accuracy", "Loss"], 
+                        ["Accuracy vs Epochs",
+                         "Loss vs Epochs"],
+                        "Grayscale - Accuracy and loss of model", fig_size=(17,5))
+    '''
 main()
