@@ -62,8 +62,8 @@ labels_map = {
 }
 
 # Hyperparameters 
-num_epochs = 5
-num_classes = 3
+epochs = 15
+num_classes = 47
 batch_size = 16
 learning_rate = 0.001
 
@@ -72,12 +72,12 @@ MODEL_STORE_PATH = "./models/"
 # Load The Data
 # Annotation File directories 
 training_file = "./LISA_DATA/Training/training_annotations.csv"
-validation_file = "./LISA_DATA/Validating/validating_annotations.csv"
+#validation_file = "./LISA_DATA/Validating/validating_annotations.csv"
 testing_file = "./LISA_DATA/Testing/testing_annotations.csv" 
 
 # Traffic Sign Image Directories 
 training_images = "./LISA_DATA/Training/training_images"
-validating_images = "./LISA_DATA/Validating/validating_images"
+#validating_images = "./LISA_DATA/Validating/validating_images"
 testing_images = "./LISA_DATA/Testing/testing_images"
 
 # Creating a custom Dataset for your files 
@@ -119,35 +119,29 @@ class CustomImageDataset(Dataset):
 
 # Performs preprocessing on the dataset images 
 data_transforms = T.Compose([
-    #T.Normalize((0.1307,), (0.3081,)),
     T.Resize((32,32)),
     T.Grayscale(1)
 ])
 
 # Initializing the custom image dataset
 training_data = CustomImageDataset(training_file, training_images, data_transforms)
-validation_data = CustomImageDataset(validation_file, validating_images, data_transforms)
+#validation_data = CustomImageDataset(validation_file, validating_images, data_transforms)
 testing_data = CustomImageDataset(testing_file, testing_images, data_transforms)
 
 train_loader = DataLoader(training_data, batch_size, shuffle=True)
-valid_loader = DataLoader(validation_data, batch_size, shuffle=True)
+#valid_loader = DataLoader(validation_data, batch_size, shuffle=True)
 test_loader = DataLoader(testing_data, batch_size, shuffle=True)
 
-'''
-for (X, y) in test_loader:
-    print("Shape of X [N, C, H, W]: ", X.shape)
-    print("Shape of y: ", y.shape, y.dtype)
-    break
-'''
+# Check if CUDA hardware acceleration is available to use 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Using {} device".format(device))
 
 class EdLeNet(nn.Module):
     def __init__(self):
         super(EdLeNet, self).__init__()
+
         # Describing the 3 convolutional layers
         self.layer1 = nn.Sequential(
-            # TODO: CLARIFY WHAT 30x30x32 is and how to get there!!!!
             # Padding = valid is the same as no padding 
             # 1st param: # of input channels (grayscale, so 1)
             # 2nd param: # of output channels (depth)
@@ -169,6 +163,7 @@ class EdLeNet(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
+
         # Dropout layer to prevent model overfitting
         self.drop_out = nn.Dropout()
         # nn.Linear creates fully convolutional layers
@@ -180,7 +175,6 @@ class EdLeNet(nn.Module):
 
     # Define how the data flows through these layers when performing a forward pass
     def forward(self, x):
-        #print(type(x))
         out = self.layer1(x)
         out = self.layer2(out)
         out = self.layer3(out)
@@ -210,6 +204,7 @@ def train(dataloader, model, loss_fn, optimizer):
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
         X = X.float()
+
         # Compute prediction error
         pred = model(X)
         loss = loss_fn(pred, y)
@@ -219,6 +214,7 @@ def train(dataloader, model, loss_fn, optimizer):
         loss.backward()
         optimizer.step()
 
+        # batch acts just like a counter 
         if batch % 100 == 0:
             loss, current = loss.item(), batch * len(X)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
@@ -239,9 +235,12 @@ def test(dataloader, model, loss_fn):
     correct /= size
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
-epochs = 5
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
+    # Calling the training and testing functions on each epoch
     train(train_loader, model, criterion, optimizer)
     test(test_loader, model, criterion)
+# Print done once all the epochs have been iterated through 
 print("Done!")
+
+# Now to print some analytic graphs 
