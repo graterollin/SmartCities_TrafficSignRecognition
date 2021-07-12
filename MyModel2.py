@@ -7,10 +7,13 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 import torchvision.datasets
 import torchvision.transforms as T
+import matplotlib.pyplot as plt
 import pandas as pd
 from torchvision.transforms.transforms import Normalize, ToTensor
+from csv import DictReader
+from csv import reader
 
-# Making a labels map of our dataset
+# Making a labels map (dictionary - keys, values) of our dataset
 labels_map = {
     0: "addedLane",
     1: "curveLeft",
@@ -62,7 +65,7 @@ labels_map = {
 }
 
 # Hyperparameters 
-epochs = 15
+epochs = 10
 num_classes = 47
 batch_size = 16
 learning_rate = 0.001
@@ -117,10 +120,17 @@ class CustomImageDataset(Dataset):
         # Returns the tensor image and corresponding label in a tuple
         return image, label 
 
-# Performs preprocessing on the dataset images 
+# Performs preprocessing on the dataset images (training) 
 data_transforms = T.Compose([
+    # TODO: Add image normalization transform to see how it effects model accuracy
     T.Resize((32,32)),
     T.Grayscale(1)
+])
+
+# Performs data augmentation on the testing images 
+data_augment = T.Compose([
+    T.Resize((32,32)),
+    
 ])
 
 # Initializing the custom image dataset
@@ -135,6 +145,56 @@ test_loader = DataLoader(testing_data, batch_size, shuffle=True)
 # Check if CUDA hardware acceleration is available to use 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Using {} device".format(device))
+
+# Training set distribution visualization 
+# Making a list to count the occurrence for each class 
+occurrence_list = [0] * num_classes
+    
+with open(training_file, 'r') as read_obj:
+    csv_reader = DictReader(read_obj)
+    for row in csv_reader:
+        class_value = int(row['ClassID'])
+        count = occurrence_list[class_value]
+        count += 1
+        occurrence_list[class_value] = count
+
+# For the 47 classes
+a = np.arange(47)
+fig, ax = plt.subplots(figsize=(12,10), edgecolor='k')
+ax.set_xticks(a)
+# Getting the labels from the 'labels_map' dictionary
+values = list(labels_map.values())
+ax.set_xticklabels(values, rotation=90)
+ax.set_title('Training Set Class Distribution')
+
+plt.xlabel('Class')
+plt.ylabel('Count')
+ax.bar(values, occurrence_list)
+plt.show()
+
+# Testing set distribution visualization 
+testing_occurrence_list = [0] * num_classes
+
+with open(testing_file, 'r') as read_obj:
+    csv_reader = DictReader(read_obj)
+    for row in csv_reader:
+        class_value = int(row['ClassID'])
+        count = testing_occurrence_list[class_value]
+        count += 1
+        testing_occurrence_list[class_value] = count
+
+a = np.arange(47)
+fig, ax = plt.subplots(figsize=(12,10), edgecolor='k')
+ax.set_xticks(a)
+# Getting the labels from the 'labels_map' dictionary
+values = list(labels_map.values())
+ax.set_xticklabels(values, rotation=90)
+ax.set_title('Testing Set Class Distribution')
+
+plt.xlabel('Class')
+plt.ylabel('Count')
+ax.bar(values, testing_occurrence_list)
+plt.show()
 
 class EdLeNet(nn.Module):
     def __init__(self):
@@ -214,6 +274,8 @@ def train(dataloader, model, loss_fn, optimizer):
         loss.backward()
         optimizer.step()
 
+        #running_loss =+ loss.item() * X.size(0)
+
         # batch acts just like a counter 
         if batch % 100 == 0:
             loss, current = loss.item(), batch * len(X)
@@ -235,12 +297,16 @@ def test(dataloader, model, loss_fn):
     correct /= size
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
+#loss_values = []
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
     # Calling the training and testing functions on each epoch
     train(train_loader, model, criterion, optimizer)
     test(test_loader, model, criterion)
+    #loss_values.append(running_loss / len(train_loader))
 # Print done once all the epochs have been iterated through 
 print("Done!")
+#plt.plot(loss_values)
 
 # Now to print some analytic graphs 
+# TODO: Loss curve & accuracy curve (possibly add uncertainty as well)
