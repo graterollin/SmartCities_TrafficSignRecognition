@@ -9,7 +9,7 @@ import torchvision.datasets
 import torchvision.transforms as T
 import matplotlib.pyplot as plt
 import pandas as pd
-from torchvision.transforms.transforms import Normalize, ToTensor
+from torchvision.transforms.transforms import Grayscale, Normalize, ToTensor
 from csv import DictReader
 from csv import reader
 
@@ -65,7 +65,7 @@ labels_map = {
 }
 
 # Hyperparameters 
-epochs = 10
+epochs = 200
 num_classes = 47
 batch_size = 16
 learning_rate = 0.001
@@ -124,14 +124,34 @@ class CustomImageDataset(Dataset):
 data_transforms = T.Compose([
     # TODO: Add image normalization transform to see how it effects model accuracy
     T.Resize((32,32)),
-    T.Grayscale(1)
+    # CHECK THIS NORMALIZATION
+    
+    T.Grayscale(1),
+    T.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))
 ])
 
-# Performs data augmentation on the testing images 
-data_augment = T.Compose([
+# This compose consists of image manipulation - Vertical flip, Horizontal Flip, Rotation 
+basic_data_augment = T.Compose([
     T.Resize((32,32)),
-    
+    T.Grayscale(1),
+    # The following transformations occur at random 
+    T.RandomRotation(degrees=(0, 180)),
+    # Horizontal and Vertical flips have 50% probability of happening
+    T.RandomHorizontalFlip(p=0.5),
+    T.RandomVerticalFlip(p=0.5)
 ])
+
+# This compose does NOT turn images to grayscale before testing 
+# This compose consists of Random Crop and Random affine (just like in TDS article)
+visual_data_augment = T.Compose([
+    T.Resize((32, 32)),
+    T.Grayscale(1),
+    T.RandomResizedCrop(size=(32, 32)),
+    #T.GaussianBlur(kernel_size=(5,9), sigma=(0.1, 5))
+    T.RandomAffine(degrees=(30, 70), translate=(0.1, 0.3), scale=(0.5, 0.75))
+])
+
+# TODO: Look into reshaping image manually to fix error in using AutoAugment
 
 # Initializing the custom image dataset
 training_data = CustomImageDataset(training_file, training_images, data_transforms)
@@ -203,7 +223,7 @@ class EdLeNet(nn.Module):
         # Describing the 3 convolutional layers
         self.layer1 = nn.Sequential(
             # Padding = valid is the same as no padding 
-            # 1st param: # of input channels (grayscale, so 1)
+            # 1st param: # of input channels (grayscale, so 1) (change when using color images)
             # 2nd param: # of output channels (depth)
             # 3rd param: kernel size (conv filter size)
             nn.Conv2d(1, 32, kernel_size=3, stride=1, padding='valid'),
@@ -259,7 +279,7 @@ criterion = nn.CrossEntropyLoss()
 # The second argument is the learning rate 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-def train(dataloader, model, loss_fn, optimizer):
+def train(dataloader, model, loss_fn, optimizer, loss_values):
     size = len(dataloader.dataset)
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
@@ -274,14 +294,17 @@ def train(dataloader, model, loss_fn, optimizer):
         loss.backward()
         optimizer.step()
 
-        #running_loss =+ loss.item() * X.size(0)
+        # This variable is used for displaying analytics 
+        loss_values.append(loss.item())
 
         # batch acts just like a counter 
         if batch % 100 == 0:
             loss, current = loss.item(), batch * len(X)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
-def test(dataloader, model, loss_fn):
+    return loss_values
+
+def test(dataloader, model, loss_fn, accuracy_values):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     model.eval()
@@ -295,18 +318,37 @@ def test(dataloader, model, loss_fn):
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
     test_loss /= num_batches
     correct /= size
+    accuracy_values.append((100*correct))
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
-#loss_values = []
+    return accuracy_values
+
+loss_values = []
+accuracy_values = []
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
     # Calling the training and testing functions on each epoch
-    train(train_loader, model, criterion, optimizer)
-    test(test_loader, model, criterion)
-    #loss_values.append(running_loss / len(train_loader))
+    training_loss = train(train_loader, model, criterion, optimizer, loss_values)
+    testing_accuracy = test(test_loader, model, criterion, accuracy_values)
 # Print done once all the epochs have been iterated through 
 print("Done!")
-#plt.plot(loss_values)
 
 # Now to print some analytic graphs 
 # TODO: Loss curve & accuracy curve (possibly add uncertainty as well)
+# Loss:
+plt.figure(figsize=(10, 5))
+plt.title("Training Loss")
+plt.plot(training_loss, label="train")
+plt.xlabel("Iterations")
+plt.ylabel("Loss")
+plt.legend()
+plt.show()
+
+# Accuracy:
+plt.figure(figsize=(10, 5))
+plt.title("Test Accuracy")
+plt.plot(testing_accuracy, label="test")
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.legend()
+plt.show()
