@@ -67,6 +67,8 @@ labels_map = {
 # Hyperparameters 
 epochs = 200
 num_classes = 47
+# batch size might be too small at 16,
+# TODO: look up how to determine an appropriate batch size or finish hyperparameter tuning  
 batch_size = 16
 learning_rate = 0.001
 
@@ -74,14 +76,14 @@ MODEL_STORE_PATH = "./models/"
 
 # Load The Data
 # Annotation File directories 
-training_file = "./LISA_DATA/Training/training_annotations.csv"
+training_file = "./LISA_DATA/Training(80-20)/training_annotations.csv"
 #validation_file = "./LISA_DATA/Validating/validating_annotations.csv"
-testing_file = "./LISA_DATA/Testing/testing_annotations.csv" 
+testing_file = "./LISA_DATA/Testing(80-20)/testing_annotations.csv" 
 
 # Traffic Sign Image Directories 
-training_images = "./LISA_DATA/Training/training_images"
+training_images = "./LISA_DATA/Training(80-20)/training_images"
 #validating_images = "./LISA_DATA/Validating/validating_images"
-testing_images = "./LISA_DATA/Testing/testing_images"
+testing_images = "./LISA_DATA/Testing(80-20)/testing_images"
 
 # Creating a custom Dataset for your files 
 class CustomImageDataset(Dataset):
@@ -91,7 +93,7 @@ class CustomImageDataset(Dataset):
         self.img_labels = pd.read_csv(annotations_file) # Reads annotations from csv file into labels
         self.img_dir = img_dir
         # Specifies the feature transform actions
-        self.transform = transform 
+        self.transform = transform  
         # Specifies the label transform actions 
         self.target_transform = target_transform
     
@@ -137,8 +139,7 @@ basic_data_augment = T.Compose([
     # The following transformations occur at random 
     T.RandomRotation(degrees=(0, 180)),
     # Horizontal and Vertical flips have 50% probability of happening
-    T.RandomHorizontalFlip(p=0.5),
-    T.RandomVerticalFlip(p=0.5)
+    T.RandomHorizontalFlip(p=0.5)
 ])
 
 # This compose does NOT turn images to grayscale before testing 
@@ -154,13 +155,15 @@ visual_data_augment = T.Compose([
 # TODO: Look into reshaping image manually to fix error in using AutoAugment
 
 # Initializing the custom image dataset
-training_data = CustomImageDataset(training_file, training_images, data_transforms)
+# Augmented images should be used for training.....
+training_data = CustomImageDataset(training_file, training_images, basic_data_augment)
 #validation_data = CustomImageDataset(validation_file, validating_images, data_transforms)
+# ...... to be compared with original images in the testing set 
 testing_data = CustomImageDataset(testing_file, testing_images, data_transforms)
 
 train_loader = DataLoader(training_data, batch_size, shuffle=True)
 #valid_loader = DataLoader(validation_data, batch_size, shuffle=True)
-test_loader = DataLoader(testing_data, batch_size, shuffle=True)
+test_loader = DataLoader(testing_data, batch_size, shuffle=False)
 
 # Check if CUDA hardware acceleration is available to use 
 device = "cuda" if torch.cuda.is_available() else "cpu"
