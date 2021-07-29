@@ -64,13 +64,22 @@ labels_map = {
     46: "zoneAhead45",
 }
 
+# IDEAL SET!
+# shuffle =True on testing 
+# epoch = 200
+# batch_size = 64 
+# lr = 0.001 
+
+# lr = 0.0001 makes it super super smooth!!!!
+
 # Hyperparameters 
 epochs = 200
 num_classes = 47
 # batch size might be too small at 16,
 # TODO: look up how to determine an appropriate batch size or finish hyperparameter tuning  
-batch_size = 16
-learning_rate = 0.001
+batch_size = 64
+
+learning_rate = 0.0001
 
 MODEL_STORE_PATH = "./models/"
 
@@ -78,12 +87,14 @@ MODEL_STORE_PATH = "./models/"
 # Annotation File directories 
 training_file = "./LISA_DATA/Training(80-20)/training_annotations.csv"
 #validation_file = "./LISA_DATA/Validating/validating_annotations.csv"
-testing_file = "./LISA_DATA/Testing(80-20)/testing_annotations.csv" 
+#testing_file = "./LISA_DATA/Testing(80-20)/testing_annotations.csv" 
+testing_file = "./LISA_DATA/Testing(Imperfect)/testing_annotations.csv"
 
 # Traffic Sign Image Directories 
 training_images = "./LISA_DATA/Training(80-20)/training_images"
 #validating_images = "./LISA_DATA/Validating/validating_images"
-testing_images = "./LISA_DATA/Testing(80-20)/testing_images"
+#testing_images = "./LISA_DATA/Testing(80-20)/testing_images"
+testing_images = "./LISA_DATA/Testing(Imperfect)/testing_images"
 
 # Creating a custom Dataset for your files 
 class CustomImageDataset(Dataset):
@@ -122,17 +133,19 @@ class CustomImageDataset(Dataset):
         # Returns the tensor image and corresponding label in a tuple
         return image, label 
 
-# Performs preprocessing on the dataset images (training) 
+count = 0
+# Performs preprocessing on the dataset images
 data_transforms = T.Compose([
     # TODO: Add image normalization transform to see how it effects model accuracy
     T.Resize((32,32)),
     # CHECK THIS NORMALIZATION
     
     T.Grayscale(1),
+    # Does this help accuracy?? Test over 10 epochs
     T.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))
 ])
 
-# This compose consists of image manipulation - Vertical flip, Horizontal Flip, Rotation 
+# This compose consists of image manipulation - Horizontal Flip, Rotation 
 basic_data_augment = T.Compose([
     T.Resize((32,32)),
     T.Grayscale(1),
@@ -142,13 +155,11 @@ basic_data_augment = T.Compose([
     T.RandomHorizontalFlip(p=0.5)
 ])
 
-# This compose does NOT turn images to grayscale before testing 
 # This compose consists of Random Crop and Random affine (just like in TDS article)
 visual_data_augment = T.Compose([
     T.Resize((32, 32)),
     T.Grayscale(1),
     T.RandomResizedCrop(size=(32, 32)),
-    #T.GaussianBlur(kernel_size=(5,9), sigma=(0.1, 5))
     T.RandomAffine(degrees=(30, 70), translate=(0.1, 0.3), scale=(0.5, 0.75))
 ])
 
@@ -156,12 +167,12 @@ visual_data_augment = T.Compose([
 
 # Initializing the custom image dataset
 # Augmented images should be used for training.....
-training_data = CustomImageDataset(training_file, training_images, basic_data_augment)
+training_data = CustomImageDataset(training_file, training_images, data_transforms)
 #validation_data = CustomImageDataset(validation_file, validating_images, data_transforms)
 # ...... to be compared with original images in the testing set 
 testing_data = CustomImageDataset(testing_file, testing_images, data_transforms)
 
-train_loader = DataLoader(training_data, batch_size, shuffle=True)
+train_loader = DataLoader(training_data, batch_size, shuffle=False)
 #valid_loader = DataLoader(validation_data, batch_size, shuffle=True)
 test_loader = DataLoader(testing_data, batch_size, shuffle=False)
 
@@ -177,8 +188,11 @@ with open(training_file, 'r') as read_obj:
     csv_reader = DictReader(read_obj)
     for row in csv_reader:
         class_value = int(row['ClassID'])
+        # Grab the current count of the class
         count = occurrence_list[class_value]
+        # Increment by 1 
         count += 1
+        # Update the count of the class 
         occurrence_list[class_value] = count
 
 # For the 47 classes
