@@ -18,12 +18,14 @@ import cv2
 # Location of the dataset (GLOBAL VARIABLE)
 data_path = "camvid"
 
+
 # testing if path is valid 
 #print(os.path.isdir(data_path))
 
 ''' Put files into lists and return them as one list 
 with all images in the folder'''
 def loadImages(path):
+    
     image_files = sorted([os.path.join(path, '701_StillsRaw_full', file)
                         for file in os.listdir(path + "/701_StillsRaw_full")
                         if file.endswith('.png')])
@@ -313,7 +315,7 @@ def main():
     print("--------------------------------")
     '''
 
-    index = 1
+    index = 0
     print("Preproccessing image #{}".format(index))
     print("Here we go...")
     
