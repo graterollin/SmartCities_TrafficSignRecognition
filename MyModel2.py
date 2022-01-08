@@ -87,14 +87,14 @@ MODEL_STORE_PATH = "./models/"
 # Annotation File directories 
 training_file = "./LISA_DATA/Training(80-20)/training_annotations.csv"
 #validation_file = "./LISA_DATA/Validating/validating_annotations.csv"
-#testing_file = "./LISA_DATA/Testing(80-20)/testing_annotations.csv" 
-testing_file = "./LISA_DATA/Testing(Imperfect)/testing_annotations.csv"
+testing_file = "./LISA_DATA/Testing(80-20)/testing_annotations.csv" 
+#testing_file = "./LISA_DATA/Testing(Imperfect)/testing_annotations.csv"
 
 # Traffic Sign Image Directories 
 training_images = "./LISA_DATA/Training(80-20)/training_images"
 #validating_images = "./LISA_DATA/Validating/validating_images"
-#testing_images = "./LISA_DATA/Testing(80-20)/testing_images"
-testing_images = "./LISA_DATA/Testing(Imperfect)/testing_images"
+testing_images = "./LISA_DATA/Testing(80-20)/testing_images"
+#testing_images = "./LISA_DATA/Testing(Imperfect)/testing_images"
 
 # Creating a custom Dataset for your files 
 class CustomImageDataset(Dataset):
@@ -145,6 +145,13 @@ data_transforms = T.Compose([
     T.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))
 ])
 
+imperfect_transforms = T.Compose([
+    T.Resize((32,32)),
+    T.RandomEqualize(p=1),
+    T.Grayscale(1),
+    T.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))
+])
+
 # This compose consists of image manipulation - Horizontal Flip, Rotation 
 basic_data_augment = T.Compose([
     T.Resize((32,32)),
@@ -167,12 +174,12 @@ visual_data_augment = T.Compose([
 
 # Initializing the custom image dataset
 # Augmented images should be used for training.....
-training_data = CustomImageDataset(training_file, training_images, data_transforms)
+training_data = CustomImageDataset(training_file, training_images, visual_data_augment)
 #validation_data = CustomImageDataset(validation_file, validating_images, data_transforms)
 # ...... to be compared with original images in the testing set 
 testing_data = CustomImageDataset(testing_file, testing_images, data_transforms)
 
-train_loader = DataLoader(training_data, batch_size, shuffle=False)
+train_loader = DataLoader(training_data, batch_size, shuffle=True)
 #valid_loader = DataLoader(validation_data, batch_size, shuffle=True)
 test_loader = DataLoader(testing_data, batch_size, shuffle=False)
 
