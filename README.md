@@ -1,5 +1,7 @@
+![png of research poster](Poster/Graterol_Andres-Poster.png)
+
 # SmartCities_TrafficSignRecognition
-Contains the work done for the UNLV: Smart Cities Program Summer 2021 
+Contains the work done for the UNLV: Smart Cities Program Summer 2021.
 
   ## Folder Directory Guide
   * Annotations_File: Contains the master annotations .csv file for the LISA Dataset.
