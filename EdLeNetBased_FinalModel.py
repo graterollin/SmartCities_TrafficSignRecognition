@@ -65,7 +65,7 @@ labels_map = {
 }
 
 # IDEAL SET!
-# shuffle =True on testing 
+# shuffle = True (on testing) 
 # epoch = 200
 # batch_size = 64 
 # lr = 0.001 
@@ -77,10 +77,12 @@ epochs = 200
 num_classes = 47
 # batch size might be too small at 16,
 # TODO: look up how to determine an appropriate batch size or finish hyperparameter tuning  
+# Batch size of 64 produces good results
 batch_size = 64
 
 learning_rate = 0.0001
 
+# Path that will stores results of models once they are run
 MODEL_STORE_PATH = "./models/"
 
 # Load The Data
@@ -96,7 +98,7 @@ training_images = "./LISA_DATA/Training(80-20)/training_images"
 testing_images = "./LISA_DATA/Testing(80-20)/testing_images"
 #testing_images = "./LISA_DATA/Testing(Imperfect)/testing_images"
 
-# Creating a custom Dataset for your files 
+# Creates a custom Dataset for my files 
 class CustomImageDataset(Dataset):
     # Run when instantiating the Dataset object 
     def __init__(self, annotations_file, img_dir, transform=None, target_transform=None):
@@ -133,18 +135,15 @@ class CustomImageDataset(Dataset):
         # Returns the tensor image and corresponding label in a tuple
         return image, label 
 
-count = 0
+# IMAGE TRANSFORMATIONS 
 # Performs preprocessing on the dataset images
 data_transforms = T.Compose([
-    # TODO: Add image normalization transform to see how it effects model accuracy
     T.Resize((32,32)),
-    # CHECK THIS NORMALIZATION
-    
     T.Grayscale(1),
-    # Does this help accuracy?? Test over 10 epochs
     T.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))
 ])
 
+# Transforms to make the imperfect images managable
 imperfect_transforms = T.Compose([
     T.Resize((32,32)),
     T.RandomEqualize(p=1),
@@ -175,22 +174,22 @@ visual_data_augment = T.Compose([
 # Initializing the custom image dataset
 # Augmented images should be used for training.....
 training_data = CustomImageDataset(training_file, training_images, visual_data_augment)
-#validation_data = CustomImageDataset(validation_file, validating_images, data_transforms)
 # ...... to be compared with original images in the testing set 
 testing_data = CustomImageDataset(testing_file, testing_images, data_transforms)
 
 train_loader = DataLoader(training_data, batch_size, shuffle=True)
-#valid_loader = DataLoader(validation_data, batch_size, shuffle=True)
 test_loader = DataLoader(testing_data, batch_size, shuffle=False)
 
 # Check if CUDA hardware acceleration is available to use 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Using {} device".format(device))
 
-# Training set distribution visualization 
-# Making a list to count the occurrence for each class 
+# TRAINING SET DISTRIBUTION VISUALIZATION
+# ======================================================
 occurrence_list = [0] * num_classes
-    
+
+# Reset the count variable
+count = 0
 with open(training_file, 'r') as read_obj:
     csv_reader = DictReader(read_obj)
     for row in csv_reader:
@@ -202,6 +201,7 @@ with open(training_file, 'r') as read_obj:
         # Update the count of the class 
         occurrence_list[class_value] = count
 
+# PLOTTING CLASS DISTRIBUTION FOR TRAINING SET
 # For the 47 classes
 a = np.arange(47)
 fig, ax = plt.subplots(figsize=(12,10), edgecolor='k')
@@ -216,7 +216,8 @@ plt.ylabel('Count')
 ax.bar(values, occurrence_list)
 plt.show()
 
-# Testing set distribution visualization 
+# TESTING SET DISTRIBUTION VISUALIZATION
+# ====================================================== 
 testing_occurrence_list = [0] * num_classes
 
 with open(testing_file, 'r') as read_obj:
@@ -227,10 +228,10 @@ with open(testing_file, 'r') as read_obj:
         count += 1
         testing_occurrence_list[class_value] = count
 
+# PLOTTING CLASS DISTRIBUTION FOR TESTING SET
 a = np.arange(47)
 fig, ax = plt.subplots(figsize=(12,10), edgecolor='k')
 ax.set_xticks(a)
-# Getting the labels from the 'labels_map' dictionary
 values = list(labels_map.values())
 ax.set_xticklabels(values, rotation=90)
 ax.set_title('Testing Set Class Distribution')
@@ -240,11 +241,12 @@ plt.ylabel('Count')
 ax.bar(values, testing_occurrence_list)
 plt.show()
 
+# MODEL ARCHITECTURE
 class EdLeNet(nn.Module):
     def __init__(self):
         super(EdLeNet, self).__init__()
 
-        # Describing the 3 convolutional layers
+        # DESCRIBING THE 3 CONVOLUTIONAL LAYERS
         self.layer1 = nn.Sequential(
             # Padding = valid is the same as no padding 
             # 1st param: # of input channels (grayscale, so 1) (change when using color images)
@@ -270,11 +272,11 @@ class EdLeNet(nn.Module):
 
         # Dropout layer to prevent model overfitting
         self.drop_out = nn.Dropout()
-        # nn.Linear creates fully convolutional layers
+       
         # The first argument is the number of nodes in the layer,
         # The second argument is the number of nodes in the following layer 
         self.fc1 = nn.Linear(2 * 2 * 128, 120)
-        # 3 is the number of classes that we are using at the moment
+        # nn.Linear creates the fully convolutional layer
         self.fc2 = nn.Linear(120, 47)
 
     # Define how the data flows through these layers when performing a forward pass
@@ -296,7 +298,7 @@ print(model)
 if torch.cuda.is_available():
     model.cuda()
 
-# Loss and optimizer 
+# LOSS AND OPTIMIZER
 # This function combines both a softmax activation and a cross entropy loss function in the same function
 criterion = nn.CrossEntropyLoss()
 # The first argument passed are the parameters we want the optimizer to train 
@@ -347,32 +349,34 @@ def test(dataloader, model, loss_fn, accuracy_values):
 
     return accuracy_values
 
-loss_values = []
-accuracy_values = []
-for t in range(epochs):
-    print(f"Epoch {t+1}\n-------------------------------")
-    # Calling the training and testing functions on each epoch
-    training_loss = train(train_loader, model, criterion, optimizer, loss_values)
-    testing_accuracy = test(test_loader, model, criterion, accuracy_values)
-# Print done once all the epochs have been iterated through 
-print("Done!")
+# Run the models and spit out statistics 
+def main():
+    loss_values = []
+    accuracy_values = []
+    for t in range(epochs):
+        print(f"Epoch {t+1}\n-------------------------------")
+        # Calling the training and testing functions on each epoch
+        training_loss = train(train_loader, model, criterion, optimizer, loss_values)
+        testing_accuracy = test(test_loader, model, criterion, accuracy_values)
+    # Print done once all the epochs have been iterated through 
+    print("Done!")
 
-# Now to print some analytic graphs 
-# TODO: Loss curve & accuracy curve (possibly add uncertainty as well)
-# Loss:
-plt.figure(figsize=(10, 5))
-plt.title("Training Loss")
-plt.plot(training_loss, label="train")
-plt.xlabel("Iterations")
-plt.ylabel("Loss")
-plt.legend()
-plt.show()
+    # Now to print some analytic graphs 
+    # TODO: Add uncertainty curve 
+    # Loss:
+    plt.figure(figsize=(10, 5))
+    plt.title("Training Loss")
+    plt.plot(training_loss, label="train")
+    plt.xlabel("Iterations")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.show()
 
-# Accuracy:
-plt.figure(figsize=(10, 5))
-plt.title("Test Accuracy")
-plt.plot(testing_accuracy, label="test")
-plt.xlabel("Epochs")
-plt.ylabel("Accuracy")
-plt.legend()
-plt.show()
+    # Accuracy:
+    plt.figure(figsize=(10, 5))
+    plt.title("Test Accuracy")
+    plt.plot(testing_accuracy, label="test")
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy")
+    plt.legend()
+    plt.show()
