@@ -349,34 +349,32 @@ def test(dataloader, model, loss_fn, accuracy_values):
 
     return accuracy_values
 
-# Run the models and spit out statistics 
-def main():
-    loss_values = []
-    accuracy_values = []
-    for t in range(epochs):
-        print(f"Epoch {t+1}\n-------------------------------")
-        # Calling the training and testing functions on each epoch
-        training_loss = train(train_loader, model, criterion, optimizer, loss_values)
-        testing_accuracy = test(test_loader, model, criterion, accuracy_values)
-    # Print done once all the epochs have been iterated through 
-    print("Done!")
+loss_values = []
+accuracy_values = []
+for t in range(epochs):
+    print(f"Epoch {t+1}\n-------------------------------")
+    # Calling the training and testing functions on each epoch
+    training_loss = train(train_loader, model, criterion, optimizer, loss_values)
+    testing_accuracy = test(test_loader, model, criterion, accuracy_values)
+# Print done once all the epochs have been iterated through 
+print("Done!")
 
-    # Now to print some analytic graphs 
-    # TODO: Add uncertainty curve 
-    # Loss:
-    plt.figure(figsize=(10, 5))
-    plt.title("Training Loss")
-    plt.plot(training_loss, label="train")
-    plt.xlabel("Iterations")
-    plt.ylabel("Loss")
-    plt.legend()
-    plt.show()
+# Now to print some analytic graphs 
+# TODO: Add uncertainty curve 
+# Loss:
+plt.figure(figsize=(10, 5))
+plt.title("Training Loss")
+plt.plot(training_loss, label="train")
+plt.xlabel("Iterations")
+plt.ylabel("Loss")
+plt.legend()
+plt.show()
 
-    # Accuracy:
-    plt.figure(figsize=(10, 5))
-    plt.title("Test Accuracy")
-    plt.plot(testing_accuracy, label="test")
-    plt.xlabel("Epochs")
-    plt.ylabel("Accuracy")
-    plt.legend()
-    plt.show()
+# Accuracy:
+plt.figure(figsize=(10, 5))
+plt.title("Test Accuracy")
+plt.plot(testing_accuracy, label="test")
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.legend()
+plt.show()
