@@ -3,8 +3,8 @@ import numpy as np
 from csv import DictReader
 from csv import reader
 
-# This file is for presenting 
-# a visualization of the distrubution of all of the classes in the LISA dataset
+# This file is for presenting a visualization
+# of the distribution of all of the classes in the LISA dataset
 
 # Making a labels map (dictionary - keys, values) of our dataset
 labels_map = {

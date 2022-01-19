@@ -6,8 +6,6 @@ https://towardsdatascience.com/image-pre-processing-c1aec0be3edf
 And uses the Cambridge-driving Labeled Video Database (CamVid) 
 '''
 
-# TODO: Add Image Normalisation, edge detection, and Histogram Equalization Functionality
-
 import sys
 import os
 import numpy as np 
@@ -18,14 +16,9 @@ import cv2
 # Location of the dataset (GLOBAL VARIABLE)
 data_path = "camvid"
 
-
-# testing if path is valid 
-#print(os.path.isdir(data_path))
-
-''' Put files into lists and return them as one list 
-with all images in the folder'''
+# Put files into lists and return them as one list 
+# with all images in the folder
 def loadImages(path):
-    
     image_files = sorted([os.path.join(path, '701_StillsRaw_full', file)
                         for file in os.listdir(path + "/701_StillsRaw_full")
                         if file.endswith('.png')])
@@ -309,12 +302,6 @@ def main():
     '''The var Dataset is a list with all images in the folder '''          
     dataset = loadImages(data_path)
     print("This dataset has {}".format(len(dataset)) + " images!")
-
-    '''
-    print("The first 3 in the folder:\n", dataset[:3])
-    print("--------------------------------")
-    '''
-
     index = 0
     print("Preproccessing image #{}".format(index))
     print("Here we go...")
